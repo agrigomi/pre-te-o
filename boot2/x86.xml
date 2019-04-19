@@ -1,0 +1,70 @@
+<project name="pre-te-o.boot" location="." >
+	<tool tag="gpp" cmd="g++" />
+	<tool tag="gcc" cmd="gcc" />
+	<tool tag="ld" cmd="ld" />
+	<tool tag="as" cmd="as" />
+	
+	<define tag="arch" value="x86" />
+	<define tag="asflags" value="--32" />
+	<define tag="cflags" value="-c -march=i386 -m32 \
+		-ffreestanding \
+		-fomit-frame-pointer \
+		-mno-red-zone \
+		-fno-pic \
+		-fno-builtin \
+		-fno-inline \
+		-fno-toplevel-reorder \
+		-fno-unit-at-a-time \
+		-fno-stack-protector \
+		-fno-exceptions \
+		-Wa,-acdhlmns=$@.lst \
+		-mpreferred-stack-boundary=2 \
+		-ffunction-sections \
+		-fdata-sections \
+		-Wall \
+		-Wstrict-prototypes \
+		-fno-ident \
+		-include code16gcc.h" />
+	<define tag="ldflags" value="" />
+	<define tag="incl" value="-I../arch/$(arch)/include -I./" />
+	<type tag="asm" ext=".S" out=".o" tool="as" flags="$(asflags)"/>
+	<type tag="c" ext=".c" out=".o" tool="gcc" flags="$(cflags) -D_$(arch)_" />
+	<type tag="bin" out=".bin" tool="ld" flags="" />
+
+	
+	<branch tag="boot_mgfs3" out="./out/$(CONFIG)" flags="-o $@" >
+		<include group="startup, common, arch,fs_mgfs3," />
+	</branch>
+	
+	<branch tag="_vbr" out="./out/$(CONFIG)" flags="-o $@" >
+		<include group="fvbr," />
+	</branch>
+
+	<target name="fsbr_mgfs3" type="bin" out="$(branch.out)" flags="--oformat=binary -Map=$(branch.out)/stage2.map -static \
+			-melf_i386 --architecture=i386 -nodefaultlibs -nostartfiles -nostdlib -T../arch/$(arch)/boot/x86.ld -o$@" branch="boot_mgfs3" />
+	
+	<target name="vbr" type="bin" out="$(branch.out)" flags="--oformat=binary -melf_i386 --architecture=i386 -nodefaultlibs -nostartfiles -nostdlib -Ttext=0 -o$@" branch="_vbr" />
+	
+	<group tag="startup" location="../arch/$(arch)/boot" >
+		<include file="fsbr," type="asm" />
+	</group>
+
+	<group tag="fvbr" location="../arch/$(arch)/boot" >
+		<include file="vbr," type="asm" />
+	</group>
+	
+	<group tag="arch" location="../arch/$(arch)/boot" >
+		<include file="boot_s3_16_32," type="asm" />
+		<include file="disk,mem,bios,display,pm,pml4,a20,context,io_buffer,globals," type="c" flags="$(incl) -Os"/>
+	</group>
+	
+	<group tag="common" location="." >
+		<include file="main," type="c" flags="-Os "/>
+		<include file="lib," type="c" flags="-Os" />
+		<include file="menu," type="c" flags="-Os" />
+	</group>
+
+	<group tag="fs_mgfs3" location="./fs" >
+		<include file="mgfs3," type="c" flags="-Os -I./" />
+	</group>
+</project>

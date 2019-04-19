@@ -1,0 +1,2 @@
+qemu-system-x86_64 -fda ./pre-te-o.img -m 16 -smp sockets=4,cores=2&
+

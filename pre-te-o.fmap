@@ -1,0 +1,13 @@
+mkdir /boot
+write -a:boot2/out/x86_64/vbr.bin
+write -b:boot2/out/x86_64/fsbr_mgfs3.bin
+write boot_menu_x86_64.config /boot/boot.config
+write core/out/x86_64/core.bin /boot/core64.bin
+write ext/init/out/x86_64/init.elf /boot/init.elf
+write ext/test/out/x86_64/test.elf /boot/test.elf
+write ext/init.xml /default.xml
+mkdir /boot/core2
+write pre-te-o.fmap /boot/core2/fmap.txt
+hlink /boot/core64.bin /boot/core2/core2_x64.bin
+hlink /default.xml /exp.xml
+

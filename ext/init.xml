@@ -1,0 +1,9 @@
+<init>
+	<env>
+		<var name="PATH" val="/init/boot;" />
+	</env>
+	<module name="test" file="/init/boot/test.elf">
+		<!-- command line parameters -->
+	</module>
+</init>
+

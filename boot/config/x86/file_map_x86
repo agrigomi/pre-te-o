@@ -1,0 +1,23 @@
+# 	syntax description
+#
+# format of directory entry:
+#	d: <parent directory> : <new directory name>
+#
+# format of file entry:
+#	f: <directory> : <file name> : <name of the file content>
+#
+# format of hard link entry:
+# 	l: <file location> : <target directory> : <name of link file>
+
+d : / : boot
+f : /boot : boot_s3.bin   : _x86/boot_s3.bin
+f : /boot : kernel32.bin : ../kernel/kernel32/kernel32.bin
+f : /boot : boot.config   : boot_menu_x86.config
+d : /boot : dir1
+l : /boot/boot_s3.bin 	: /boot/dir1 : s3.bin
+l : /boot/kernel32.bin : /boot/dir1 : kernel.bin
+d : /boot : ext
+f : /boot/ext : test-ext.elf : ../kernel/ext/test/test-ext_x86.elf
+l : /boot/ext/test-ext.elf : /boot/ext : test-ext-1.elf
+f : /boot/ext : cfg_x86.xml : ../config/cfg_x86.xml
+

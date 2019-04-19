@@ -1,0 +1,3 @@
+#!/bin/sh
+
+../kernel/hal/fs/mgfs/test/mkmgfs -s2 -c2 -nmgfs2.img -a_x86/boot_s1.bin -b_x86/boot_s2.bin -f file_map_x86

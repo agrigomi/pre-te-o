@@ -1,0 +1,22 @@
+# 	syntax description
+#
+# create directory:
+#	d: <full path to parent directory> : <new directory name>
+#
+# create file:
+#	f: <full path to directory> : <file name> : <name of the file content>
+#
+# create hard link:
+# 	l: <file location> : <target directory> : <name of link file>
+
+d :/ 			:boot
+d :/boot 		:dir1
+f :/boot 		:boot_s3.bin   	:./out/x86_64/boot_s3.bin
+f :/boot 		:core64.bin 	:../core/out/x86_64/core_x86_64.bin
+f :/boot 		:boot.config   	:./config/x86_64/boot_menu_x86_64.config
+l :/boot/boot_s3.bin 	:/boot/dir1 	:s3.bin
+l :/boot/core64.bin 	:/boot/dir1 	:kernel.bin
+#d : /boot 		: ext
+#f : /boot/ext 		: test-ext.elf 	: ../kernel/ext/test/test-ext_x86_64.elf
+#l : /boot/ext/test-ext.elf : /boot/ext : test-ext-1.elf
+#f : /boot/ext 		: cfg_x86_64.xml: ../config/cfg_x86_64.xml

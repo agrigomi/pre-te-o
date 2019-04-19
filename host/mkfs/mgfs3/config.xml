@@ -1,0 +1,70 @@
+<project name="mkmgfs3" location="." >
+	<tool tag="gpp" cmd="g++" />
+	<tool tag="ld" cmd="ld" />
+	
+       <define tag="incl" value="-I../../../include \
+		    		-I../../../core/driver/fs/mgfs3 \
+				-I../../../interface \
+				-I../../xmake" />
+	<define tag="interface" value="../../../interface" />
+
+       <define tag="cpp_flags" value="-c -pthread -Wall $(incl) -D_GCC_ -D_CORE_" />
+       <define tag="lib" value="-lstdc++ -lpthread" />
+
+       	<type tag="cpp" ext=".cpp" out=".o" tool="gpp" />
+	<type tag="rel" out=".o" tool="ld" flags="-r" />
+	<type tag="elf" tool="gpp" flags="" />
+       
+       <branch tag="x86" out="$(project.location)/out" flags="$(cpp_flags) -o $@" >
+	       <include group="mgfs3,sync,str,repo,main,args,heap,vfs," />
+       </branch>
+       
+       <target name="mkmgfs3" type="elf" out="$(branch.out)" flags="-o $@ $(lib)" />
+       
+       <group tag="mgfs3" location="../../../core/driver/fs/mgfs3" >
+       		<define tag="dep" value="$(mgfs3.location)/mgfs3.h \
+			     		$(mgfs3.location)/inode.h \
+					$(interface)/iFSIO.h \
+					$(mgfs3.location)/dentry.h \
+					$(mgfs3.location)/file.h \
+					$(mgfs3.location)/bitmap.h \
+					$(mgfs3.location)/buffer.h" />
+	       <include file="inode,dentry,mgfs3,bitmap,buffer,file," type="cpp" depends="$(mgfs3.dep)" flags="-Os" />
+	       <target name="rel_mgfs3" type="rel" flags="-o $@" />
+       </group>
+       
+       <group tag="sync" location="../../../core/sync" >
+	       <define tag="dep" value="" /> 
+	       <include file="mutex,mutex_api," type="cpp" flags="-Os -I$(sync.location)" depends="$(sync.dep)" />
+       </group>
+
+       <group tag="str" location="../../../core/common/lib" >
+       		<define tag="dep" value="$(str.location)/str.h" />
+		<include file="str," type="cpp" flags="-Os -I$(str.location)" depends="$(str.dep)" />
+       </group>
+
+       <group tag="repo" location="../../../core/sys" >
+       		<define tag="dep" value="$(repo.location)/repository.h" />
+		<include file="repository2," type="cpp" flags="-Os -I$(repo.location)" depends="$(repo.dep)" />
+       </group>
+
+       <group tag="main" location="." >
+       		<include file="main,create,rwdm,dir,link,state,fmap," 
+				type="cpp" depends="$(main.location)/mkfs.h" flags="-Os -I$(main.location)" />
+		<target name="rel_main" type="rel" flags="-o $@" />
+       </group>
+
+       <group tag="args" location="../../xmake" >
+       		<include file="clargs," type="cpp" flags="-Os -I$(args.location)" depends="$(args.location)/clargs.h" />
+       </group>
+
+       <group tag="heap" location="../../../core/mem" >
+       		<include file="ring_heap," type="cpp" flags="-Os -I$(heap.location)" />
+       </group>
+       
+       <group tag="vfs" location="../../../core/driver/fs" >
+       		<define tag="dep" value="$(interface)/iFSIO.h" />
+       		<include file="vfs_buffer," type="cpp" flags="-Os -I$(incl)" depends="$(vfs.dep)" />
+       </group>
+</project>
+

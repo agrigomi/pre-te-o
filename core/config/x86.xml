@@ -1,0 +1,377 @@
+<project name="pre-te-o.core" location="." >
+	<tool tag="gpp" cmd="g++" />
+	<tool tag="gcc" cmd="gcc" />
+	<tool tag="ld" cmd="ld" />
+	<tool tag="as" cmd="as" />
+	<tool tag="ar" cmd="ar" />
+
+	<define tag="cdef" value="-c -fno-exceptions -fno-rtti \
+		-fomit-frame-pointer \
+		-fno-dwarf2-cfi-asm \
+		-ffreestanding \
+		-fno-pic \
+		-fno-threadsafe-statics \
+		-fno-optional-diags \
+		-fno-jump-tables \
+		-fnon-call-exceptions \
+		-fno-stack-limit \
+		-fno-common \
+		-fno-builtin \
+		-fno-gnu-keywords \
+		-fno-access-control \
+		-fno-nonansi-builtins \
+		-nostdinc++ \
+		-fno-default-inline \
+		-mno-red-zone \
+		-fno-toplevel-reorder \
+		-fno-unit-at-a-time \
+		-fno-stack-protector \
+		-fno-ident \
+		-fdata-sections \
+		-ffunction-sections \
+		-W -Wall"
+	/>
+
+	<define tag="cdef64" value="$(cdef) -m64 -mcmodel=large -D_64_ -D_CORE_" />
+	<define tag="cdef32" value="$(cdef) -m32 -D_32_ -D_CORE_" />
+
+	<define tag="interface" value="../interface" />
+	<define tag="common_include" value="../include" />
+	<define tag="arch_dir" value="../arch/x86" />
+	<define tag="arch_include" value="$(arch_dir)/include" />
+	<define tag="arch_interface" value="$(arch_dir)/interface" />
+	<define tag="incl" value="-I$(interface) -I$(common_include) -I$(arch_include) -I$(arch_interface)" />
+	<define tag="output" value="./out/$(CONFIG)" />
+	<define tag="asdef64" value="$(cdef64)" />
+	<define tag="asdef32" value="--32 -n" />
+	<define tag="lddef" value="-nostdlib -z max-page-size=0x1000" />
+
+	<type tag="cpp" ext=".cpp" out=".o" tool="gpp" flags="$(incl) -D_$(BRANCH)_ -D_$(CONFIG)_" />
+	<type tag="asm" ext=".S" out=".o" tool="gcc" flags="$(incl) -D_$(BRANCH)_ -D_$(CONFIG)_"/>
+	<type tag="c" ext=".c" out=".o" tool="gcc" flags="$(incl) -D_$(BRANCH)_ -D_$(CONFIG)_" />
+	<type tag="bin" out=".bin" tool="ld" flags="$(lddef)"/>
+	<type tag="lib" out=".a" tool="ar" flags="-r $@"/>
+	<type tag="rel" out=".o" tool="ld" flags="-r $(lddef)" />
+
+<!-- BRANCH x86-64 -->
+	<branch tag="default" out="$(output)" flags="-o $@" >
+		<include group="startup64," flags="$(cdef64)" />
+		<include group="abi,sync,driver,sdctrl,disp,cmos,cpu,pci," flags="$(cdef64)" />
+		<include group="mem,sys,entry,main,console,common,"  flags="$(cdef64)" />
+		<include group="dma,lib,mgfs3,kbd,elf," flags="$(cdef64)" />
+		<include group="bdctrl,usb,ide,ahci,fdd,vfs," flags="$(cdef64)" />
+		
+		<target name="rel_default" type="rel" flags="$(default.flags)" />
+	</branch>
+
+<!-- TARGET x86-64 -->
+	<target name="core" type="bin" out="$(branch.out)" 
+		flags="-T$(arch_dir)/startup64/setup64.ld $(lddef) \
+			-static --oformat=binary -Map=$(branch.out)/core_x86_64.map -o $@" branch="default" /> 
+	
+	<group tag="startup64" location="$(arch_dir)/startup64">
+		<include file="startup," 
+			type="asm" 
+			flags="$(asdef64)"/>
+	</group>
+
+	<group tag="startup32" location="$(arch_dir)/startup32">
+		<include file="startup," 
+			type="asm" 
+			lags="$(asdef32)"/>
+	</group>
+
+	<group tag="abi" location="../abi" flags="-I$(abi.location) -Os">
+		<define tag="depends" 
+			value="$(common_include)/startup_context.h \
+				$(abi.location)/icxxabi.h \
+				$(interface)/iBase.h \
+				$(common_include)/repository.h \
+				$(interface)/iRepository.h" />
+		<include file="loader, icxxabi," 
+			type="cpp" 
+			depends="$(abi.depends)"/>
+			
+		<target name="abi_rel" type="rel" flags="-o $@"/>
+	</group>
+
+	<group tag="driver" location="./driver" flags="-I$(driver.location) -Os" >
+		<define tag="dep" value="$(interface)/iBase.h $(interface)/iDriver.h" />
+		<include file="driver_root," 
+			type="cpp"
+			depends="$(driver.dep)" />
+<!--			
+		<target name="driver_rel" type="rel" flags="-o $@"/>
+-->		
+	</group>
+	
+	<group tag="main" location="$(project.location)/main" >
+		<include file="main," 
+			type="cpp" 
+			flags="-I$(main.location) -Os"
+			depends="$(interface)/iBase.h \
+				$(interface)/iRepository.h \
+				$(common_include)/startup_context.h"/>
+	</group>
+	
+	<group tag="cpu" location="$(arch_dir)/cpu" >
+		<define tag="dep" 
+			value="$(arch_include)/pgdef.h \
+				$(cpu.location)/mp_scan.h \
+				$(cpu.location)/addr.h \
+				$(cpu.location)/msr.h \
+				$(cpu.location)/cpu_host.h \
+				$(cpu.location)/cpuX64.h \
+				$(cpu.location)/lapic.h \
+				$(cpu.location)/ioapic.h \
+				$(cpu.location)/vmmX64.h \
+				$(cpu.location)/cpu.h \
+				$(common_include)/startup_context.h \
+				$(interface)/iMemory.h \
+				$(interface)/iCPUHost.h \
+				$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iScheduler.h \
+				$(arch_interface)/iLocalApic.h \
+				$(arch_interface)/iVMMx86.h \
+				$(arch_include)/intdef.h \
+				$(arch_interface)/iIOApic.h" />
+		<include file="cpuX64,msr," 
+				type="cpp" flags="-I$(cpu.location) -Os" depends="$(cpu.dep)"/>
+		<include file="lapic," 
+				type="cpp" flags="-I$(cpu.location) -Os" depends="$(cpu.dep)"/>
+		<include file="ioapic,cpu_host,vmmX64,mp_scan,cpu," 
+				type="cpp" flags="-I$(cpu.location) -Os" depends="$(cpu.dep)"/>
+		<include file="interrupt," type="asm" />
+		<target name="cpu_rel" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="disp" location="$(arch_dir)/display" flags="-I$(disp.location) -Os" >
+		<include file="text_display," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iSerialDevice.h \
+				$(interface)/iDriver.h " />	
+	</group>
+
+	<group tag="dma" location="$(arch_dir)/dma" flags="-I$(dma.location) -Os" >
+		<include file="isa_dma," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iDMA.h \
+				$(interface)/iDriver.h " />	
+	</group>
+
+	<group tag="entry" location="$(arch_dir)/entry" flags="-I$(entry.location) -Os" >
+		<include file="entry,ctrl_setup," 
+			type="cpp" />
+		<target name="rel_entry" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="bdctrl" location="./driver/bdev" flags="-I$(bdctrl.location) -Os" >
+		<include file="bdctrl_host,volume,cache,ramd," 
+			type="cpp"
+			depends="$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSystemBus.h \
+				$(arch_include)/intdef.h \
+				$(interface)/iBlockDevice.h" />
+		<target name="rel_bdctrl" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="sdctrl" location="./driver/sdev" flags="-I$(sdctrl.location) -Os" >
+		<include file="sdhost," 
+			type="cpp"
+			depends="$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSystemBus.h \
+				$(arch_include)/intdef.h \
+				$(interface)/iSerialDevice.h" />
+	</group>
+
+	<group tag="usb" location="./driver/sdev/usb" flags="-I$(usb.location) -Os" >
+		<include file="gen_ctrl," 
+			type="cpp"
+			depends="$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSystemBus.h \
+				$(arch_include)/intdef.h \
+				$(interface)/iSerialDevice.h \
+				$(usb.location)/usb.h" />
+		<target name="usb_driver" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="ide" location="./driver/bdev/ide" flags="-I$(ide.location) -Os" >
+		<include file="generic,channel,device," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSystemBus.h \
+				$(ide.location)/ide.h \
+				$(arch_include)/intdef.h \
+				$(interface)/iBlockDevice.h" />
+
+		<target name="ide_driver" type="rel" flags="-o $@" />
+	</group>
+	
+	<group tag="ahci" location="./driver/bdev/ahci" flags="-I$(ahci.location) -Os" >
+		<include file="generic,device," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSystemBus.h \
+				$(arch_include)/intdef.h \
+				$(ahci.location)/ahci.h \
+				$(interface)/iBlockDevice.h" />
+
+		<target name="ahci_driver" type="rel" flags="-o $@" />
+	</group>
+	
+	<group tag="fdd" location="./driver/bdev/fdd" flags="-I$(fdd.location) -Os" >
+		<include file="generic,device," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSystemBus.h \
+				$(arch_include)/intdef.h \
+				$(fdd.location)/floppy.h \
+				$(interface)/iBlockDevice.h" />
+
+		<target name="fdd_driver" type="rel" flags="-o $@" />
+	</group>
+	
+	<group tag="vfs" location="./driver/fs" flags="-I$(vfs.location) -Os" >
+		<include file="vfs_host,vfs_root,vfs_buffer,vfs_handle," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iVFS.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSystemBus.h \
+				$(interface)/iFSIO.h \
+				$(interface)/iBlockDevice.h" />
+
+		<target name="rel_vfs" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="kbd" location="$(arch_dir)/keyboard" flags="-I$(kbd.location) -Os" >
+		<include file="genkbd," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(arch_include)/intdef.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSerialDevice.h"  />	
+	</group>
+	
+	<group tag="pci" location="./driver/pci" flags="-I$(pci.location) -Os" >
+		<include file="pci," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iSystemBus.h \
+				$(interface)/iDriver.h \
+				$(pci.location)/vend_db.h" />	
+	</group>
+
+	<group tag="console" location="./driver/sdev/console" flags="-Os -I$(console.location)" >
+		<include file="console," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iSerialDevice.h \
+				$(console.location)/console.h" />
+	</group>
+
+	<group tag="elf" location="$(arch_dir)/elf" flags="-I$(elf.location) -Os" >
+		<define tag="depends" 
+			value="$(interface)/iBase.h \
+				$(interface)/iExecutable.h \
+				$(elf.location)/elf.h \
+				$(elf.location)/elf_parser.h" />
+		<include file="parser64," 
+			type="cpp" 
+			depends="$(elf.depends)" />
+<!-- 
+		<target name="elf_rel" type="rel" flags="-o $@" />
+-->
+	</group>
+
+	<group tag="mem" location="./mem" flags="-Os -I$(mem.location)" >
+		<include file="b24_pma,slab_heap, slab,"
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(common_include)/startup_context.h \
+				$(mem.location)/slab.h \
+				$(interface)/iMemory.h" />
+		<target name="mem_rel" type="rel" flags="-o $@" />
+	</group>
+
+
+	<group tag="sync" location="./sync" flags="-I$(sync.location) -Os" >
+		<include file="event,mutex,mutex_api,broadcast," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(sync.location)/mutex_api.h \
+				$(interface)/iSyncObject.h" />
+				
+		<target name="sync_rel" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="cmos" location="$(arch_dir)/cmos" flags="-I$(cmos.location) -Os" >
+		<include file="cmos,rtc," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(arch_interface)/iCMOS.h \
+				$(arch_interface)/iRTC.h" />
+		<target name="cmos_rel" type="rel" flags="-o $@" />
+	</group>
+	
+	<group tag="sys" location="./sys" flags="-I$(sys.location) -Os" >
+		<include file="repository3,syslog,micro_blender,timer," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iRepository.h \
+				$(interface)/iSystemLog.h \
+				$(interface)/iSyncObject.h \
+				$(interface)/iScheduler.h \
+				$(interface)/iTimer.h \
+				$(sys.location)/repository.h" />
+		<target name="sys" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="lib" location="./common/lib" flags="-I$(lib.location) -Os" >
+		<include file="karg_parser,str,blender," 
+			type="cpp" 
+			depends="$(lib.location)/str.h $(interface)/iScheduler.h" />
+		<target name="core_lib" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="common" location="./common" flags="-I$(common.location) -I$(common.location)/lib -Os" >
+		<include file="ext_ldr,ll_alg,llist," 
+			type="cpp" 
+			depends="$(interface)/iBase.h \
+				$(interface)/iDataStorage.h \
+				$(interface)/iHypertext.h \
+				$(interface)/iExecutable.h \
+				$(interface)/iSyncObject.h \
+				$(common.location)/ll_alg.h"/>
+		<target name="common" type="rel" flags="-o $@" />
+	</group>
+
+	<group tag="mgfs3" location="./driver/fs/mgfs3" flags="-I$(mgfs3.location) -Os">
+		<include file="inode, dentry, bitmap, buffer, file, mgfs3,vfs,vfs_context,"
+			type="cpp"
+			depends="$(mgfs3.location)/mgfs3.h \
+				$(interface)/iBase.h \
+				$(interface)/iDriver.h \
+				$(interface)/iVFS.h \
+				$(interface)/iFSIO.h \
+				$(mgfs3.location)/vfs.h \
+				$(mgfs3.location)/inode.h \
+				$(mgfs3.location)/dentry.h \
+				$(mgfs3.location)/bitmap.h \
+				$(mgfs3.location)/buffer.h \
+				$(mgfs3.location)/file.h" />
+		<target name="mgfs3" type="rel" flags="-o $@" />
+	</group>
+
+</project>
+

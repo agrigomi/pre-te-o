@@ -1,0 +1,77 @@
+<project name="test_ext" location="." >
+
+	<tool tag="gpp" cmd="g++-4.6" />
+	<tool tag="gcc" cmd="gcc-4.6" />
+	<tool tag="ld" cmd="ld" />
+	<tool tag="as" cmd="as" />
+	<tool tag="ar" cmd="ar" />
+
+	<define tag="cdef" value="-c -fno-exceptions -fno-rtti \
+		-fomit-frame-pointer \
+		-fno-dwarf2-cfi-asm \
+		-ffreestanding \
+		-fno-threadsafe-statics \
+		-fno-optional-diags \
+		-fno-jump-tables \
+		-fnon-call-exceptions \
+		-fno-stack-limit \
+		-fno-common \
+		-fno-builtin \
+		-fno-nonansi-builtins \
+		-nostdinc++ \
+		-fno-default-inline \
+		-mno-red-zone \
+		-fno-toplevel-reorder \
+		-fno-unit-at-a-time \
+		-fno-stack-protector \
+		-fno-ident \
+		-Wno-int-to-pointer-cast \
+		-fdata-sections \
+		-ffunction-sections \
+		-W -Wall"
+	/>
+
+	<define tag="cdef64" value="$(cdef) -m64 -fpic -D_64_ -D_EXT_" />
+
+	<define tag="interface" value="../../interface" />
+	<define tag="common_include" value="../../include" />
+	<define tag="arch_include" value="../../arch/x86/include" />
+	<define tag="arch_interface" value="../../arch/x86/interface" />
+	<define tag="incl" value="-I$(interface) -I$(common_include) -I$(arch_include) -I$(arch_interface)" />
+	<define tag="output" value="./out/$(CONFIG)" />
+	<define tag="lib_dir" value="../lib/out/$(CONFIG)" />
+	<define tag="asdef64" value="$(cdef64)" />
+	<define tag="asdef32" value="--32 -n" />
+	<define tag="lddef" value="-nostdlib -z max-page-size=0x1000" />
+
+	<type tag="cpp" ext=".cpp" out=".o" tool="gpp" flags="$(incl) -D_$(BRANCH)_ -D_$(CONFIG)_" />
+	<type tag="asm" ext=".S" out=".o" tool="gcc" flags="$(incl) -D_$(BRANCH)_ -D_$(CONFIG)_"/>
+	<type tag="c" ext=".c" out=".o" tool="gcc" flags="$(incl) -D_$(BRANCH)_ -D_$(CONFIG)_" />
+	<type tag="elf" out=".elf" tool="ld" flags="$(lddef)"/>
+	<type tag="lib" out=".a" tool="ar" flags="-r $@"/>
+	<type tag="rel" out=".o" tool="ld" flags="-r $(lddef)" />
+
+<!-- BRANCH x86-64 -->
+	<branch tag="default" out="$(output)" flags="-o $@" >
+		<include group="main," flags="$(cdef64)" />
+		
+		<target name="test_rel" type="rel" flags="$(default.flags)" />
+	</branch>
+
+<!-- TARGET x86-64 -->
+	<target name="test" type="elf" out="$(branch.out)" 
+		flags="-T../arch/$(CONFIG)/$(CONFIG).ld $(lddef) -pie -shared \
+			$(lib_dir)/extlib.o -Map=$(branch.out)/$(CONFIG).map -o $@" branch="default"/> 
+	
+	<group tag="startup64" location="../arch/$(CONFIG)">
+		<include file="startup," 
+			type="asm" 
+			flags="$(asdef64)"/>
+	</group>
+
+
+	<group tag="main" location="./" >
+		<include file="main," type="cpp" flags="-Os"/>
+	</group>
+
+</project>

@@ -1,0 +1,13 @@
+mkdir /dir1 -V
+mkdir /dir2 -V
+write -a:../../../boot2/x86/out/vbr.bin
+write -b:../../../boot2/x86/out/stage2.bin
+write config.xml /dir1/config.xml -V
+write mkmgfs3.mk /dir2/mkmgfs3.mk -V
+slink /dir1/config.xml /dir2/soft_link_of_dir1_config.xml
+hlink /dir2/mkmgfs3.mk /dir1/hard_link_of_dir2_mkmgfs3.mk
+list  /
+list  /dir1
+list  /dir2
+status
+
